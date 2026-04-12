@@ -1,18 +1,35 @@
-openai>=2.0.0
-streamlit>=1.30.0
-python-dotenv>=1.0.0
+# Core App
+streamlit
+python-dotenv
+
+# OCR (API-based)
+requests
+Pillow
+
+# Translation
+googletrans==4.0.0-rc1
+
+# Text-to-Speech
+gtts
 pyttsx3
-langchain>=0.2.0
-langchain-community>=0.2.0
+
+# Document Processing
 pypdf
 PyPDF2
 python-docx
 python-pptx
-Pillow
-pytesseract
-requests
+
+# Web Scraping / Parsing
 beautifulsoup4
 lxml
 readability-lxml
-gtts
-deep-translator
+
+# LangChain (if used in your project)
+langchain
+langchain-community
+
+# Optional (if you still keep Tesseract fallback)
+pytesseract
+
+# Optional (if using OpenAI features)
+openai
