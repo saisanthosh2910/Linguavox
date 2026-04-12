@@ -1,4 +1,4 @@
-from googletrans import Translator
+from deep_translator import GoogleTranslator as Translator
 import os
 import streamlit as st
 from dotenv import load_dotenv
