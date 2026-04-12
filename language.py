@@ -1,5 +1,7 @@
-from deep_translator import GoogleTranslator
+from deep_translator import GoogleTranslator as Translator
 import textwrap
+import asyncio
+import inspect
 
 LANGUAGE_CODES = {
     "English": "en",
@@ -11,19 +13,30 @@ LANGUAGE_CODES = {
     "Chinese (Simplified)": "zh-cn"
 }
 
-def chunk_text(text, size=3000):
-    return textwrap.wrap(text, width=size)
+def chunk_text(text, max_length=5000):
+    return textwrap.wrap(text, width=max_length, break_long_words=False, break_on_hyphens=False)
 
-def translate_text(text, dest_lang):
+def translate_chunk(translator, chunk, dest_lang):
+    result = translator.translate(chunk, dest=dest_lang)
+    if inspect.iscoroutine(result):
+        return asyncio.run(result).text
+    else:
+        return result.text
+
+def translate_text(text, dest_lang='te'):
+    if not text.strip():
+        return ""
+    if dest_lang not in LANGUAGE_CODES.values():
+        raise ValueError(f"Unsupported language code: {dest_lang}")
+    translator = Translator()
     chunks = chunk_text(text)
-    translated = []
-
-    for chunk in chunks:
+    translated_chunks = []
+    for i, chunk in enumerate(chunks):
         try:
-            translated.append(
-                GoogleTranslator(source='auto', target=dest_lang).translate(chunk)
-            )
-        except:
-            translated.append("[Error]")
+            translated = translate_chunk(translator, chunk, dest_lang)
+            translated_chunks.append(translated)
+        except Exception:
+            translated_chunks.append(f"[Error translating chunk {i+1}]")
+    return " ".join(translated_chunks)
 
-    return " ".join(translated)
+
