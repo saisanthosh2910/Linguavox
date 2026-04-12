@@ -1,4 +1,4 @@
-from deep_translator import GoogleTranslator as Translator
+from googletrans import Translator
 import textwrap
 import asyncio
 import inspect
