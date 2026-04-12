@@ -99,25 +99,67 @@ def extract_text_from_pptx(uploaded_file):
     return full_text
 
 # --- Image Text Extraction ---
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+import pytesseract
+from PIL import Image
+import re
+
+# Set tesseract path (Windows)
+import requests
+import re
+
+API_KEY = "K84999071788957"
+
 
 def extract_text_from_image(uploaded_file):
-    image = Image.open(uploaded_file)
-    extracted_text = pytesseract.image_to_string(image)
+    try:
+        # Send image to OCR API
+        response = requests.post(
+            "https://api.ocr.space/parse/image",
+            files={"file": uploaded_file},
+            data={
+                "apikey": API_KEY,
+                "language": "eng",
+                "isOverlayRequired": False
+            }
+        )
 
-    unwanted_patterns = [
-        r'.*indd.*',
-        r'^\s+$'
-    ]
+        result = response.json()
 
-    full_text = ""
-    for line in extracted_text.split('\n'):
-        if any(re.match(pattern, line.strip()) for pattern in unwanted_patterns):
-            continue
-        if line.strip():
-            full_text += line.strip() + "\n"
+        # Debug print (optional)
+        # print(result)
 
-    return full_text
+        # Check if OCR worked
+        if result.get("IsErroredOnProcessing"):
+            return f"Error: {result.get('ErrorMessage')}"
+
+        parsed_results = result.get("ParsedResults")
+
+        if not parsed_results:
+            return "No text found"
+
+        extracted_text = parsed_results[0].get("ParsedText", "")
+
+        # 🔹 Clean unwanted lines
+        unwanted_patterns = [
+            r'.*indd.*',
+            r'^\s*$'
+        ]
+
+        full_text = ""
+
+        for line in extracted_text.split("\n"):
+            line = line.strip()
+
+            if any(re.search(pattern, line, re.IGNORECASE) for pattern in unwanted_patterns):
+                continue
+
+            if line:
+                full_text += line + "\n"
+
+        return full_text.strip()
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 # --- URL Article Extraction ---
 def extract_text_from_url(url):
