@@ -11,21 +11,19 @@ LANGUAGE_CODES = {
     "Chinese (Simplified)": "zh-cn"
 }
 
-def chunk_text(text, max_length=3000):
-    return textwrap.wrap(text, width=max_length, break_long_words=False)
+def chunk_text(text, size=3000):
+    return textwrap.wrap(text, width=size)
 
-def translate_text(text, dest_lang='te'):
-    if not text.strip():
-        return ""
-
+def translate_text(text, dest_lang):
     chunks = chunk_text(text)
-    translated_chunks = []
+    translated = []
 
     for chunk in chunks:
         try:
-            translated = GoogleTranslator(source='auto', target=dest_lang).translate(chunk)
-            translated_chunks.append(translated)
-        except Exception:
-            translated_chunks.append("[Translation Error]")
+            translated.append(
+                GoogleTranslator(source='auto', target=dest_lang).translate(chunk)
+            )
+        except:
+            translated.append("[Error]")
 
-    return " ".join(translated_chunks)
+    return " ".join(translated)

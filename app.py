@@ -6,6 +6,7 @@ import extract
 from language import LANGUAGE_CODES, translate_text
 from gtts import gTTS
 
+# Load env
 load_dotenv()
 api_key = os.getenv("NVIDIA_API_KEY")
 
@@ -14,54 +15,52 @@ client = OpenAI(
     api_key=api_key
 )
 
-def chunk_text(text, max_tokens=3000, overlap=500):
-    chunk_size = max_tokens * 4
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size - overlap)]
+# ---------------- TEXT CHUNKING ----------------
+def chunk_text(text, size=3000):
+    return [text[i:i+size] for i in range(0, len(text), size)]
 
-def summarize_chunk(content, summary_type, max_output_tokens):
-    prompt = f"Provide a {summary_type} summary of the following text:\n\n{content}"
+# ---------------- SUMMARIZATION ----------------
+def summarize_text(text):
+    chunks = chunk_text(text)
+    summary = ""
 
-    response = client.chat.completions.create(
-        model="nvidia/llama-3.3-nemotron-super-49b-v1",
-        messages=[
-            {"role": "system", "content": "You are a helpful summarization assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=max_output_tokens,
-        temperature=0.6
-    )
+    for chunk in chunks:
+        response = client.chat.completions.create(
+            model="nvidia/llama-3.3-nemotron-super-49b-v1",
+            messages=[
+                {"role": "system", "content": "Summarize the text clearly."},
+                {"role": "user", "content": chunk}
+            ],
+            max_tokens=500
+        )
+        summary += response.choices[0].message.content + "\n\n"
 
-    return response.choices[0].message.content.strip()
+    return summary
 
-def summarize_file(full_text, summary_type):
-    token_map = {"Brief": 500, "Detailed": 1024, "Important": 800}
-    chunks = chunk_text(full_text)
-
-    return "\n\n".join(
-        summarize_chunk(chunk, summary_type, token_map[summary_type])
-        for chunk in chunks
-    )
-
+# ---------------- AUDIO ----------------
 def generate_audio(text, lang='en'):
-    filename = "output.mp3"
+    file_path = "output.mp3"
     tts = gTTS(text=text, lang=lang)
-    tts.save(filename)
-    return filename
+    tts.save(file_path)
+    return file_path
 
-st.set_page_config(page_title="LINGUAVOX", layout="wide")
+# ---------------- UI ----------------
+st.set_page_config(page_title="Linguavox", layout="wide")
 
-st.sidebar.header("Upload File")
-uploaded_file = st.sidebar.file_uploader("Upload", type=["pdf", "txt", "docx", "pptx", "png", "jpg"])
+st.title("🧠 Linguavox - AI Document Assistant")
 
-mode = st.sidebar.selectbox("Mode", ["Summarize", "Full Text"])
+uploaded_file = st.file_uploader("Upload file", type=["pdf", "txt", "docx", "pptx", "png", "jpg"])
 
-enable_translation = st.sidebar.checkbox("Enable Translation")
+mode = st.selectbox("Select Mode", ["Full Text", "Summarize"])
 
-target_lang = 'en'
+enable_translation = st.checkbox("Enable Translation")
+
+target_lang = "en"
 if enable_translation:
-    selected_lang = st.sidebar.selectbox("Language", list(LANGUAGE_CODES.keys()))
-    target_lang = LANGUAGE_CODES[selected_lang]
+    lang_choice = st.selectbox("Select Language", list(LANGUAGE_CODES.keys()))
+    target_lang = LANGUAGE_CODES[lang_choice]
 
+# ---------------- PROCESS ----------------
 if uploaded_file:
     file_ext = uploaded_file.name.split('.')[-1].lower()
 
@@ -76,28 +75,28 @@ if uploaded_file:
     elif file_ext in ["png", "jpg"]:
         text = extract.extract_text_from_image(uploaded_file)
     else:
-        st.error("Unsupported file")
+        st.error("Unsupported file type")
         st.stop()
 
-    if mode == "Summarize":
+    if mode == "Full Text":
+        if enable_translation:
+            text = translate_text(text, target_lang)
+
+        st.text_area("Output Text", text, height=300)
+
+        if st.button("🔊 Play Audio"):
+            audio = generate_audio(text, target_lang)
+            st.audio(audio)
+
+    elif mode == "Summarize":
         if st.button("Generate Summary"):
-            summary = summarize_file(text, "Brief")
+            summary = summarize_text(text)
 
             if enable_translation:
                 summary = translate_text(summary, target_lang)
 
-            st.text_area("Summary", summary)
+            st.text_area("Summary", summary, height=300)
 
-            if st.button("Play Audio"):
+            if st.button("🔊 Play Summary Audio"):
                 audio = generate_audio(summary, target_lang)
                 st.audio(audio)
-
-    elif mode == "Full Text":
-        if enable_translation:
-            text = translate_text(text, target_lang)
-
-        st.text_area("Text", text)
-
-        if st.button("Play Audio"):
-            audio = generate_audio(text, target_lang)
-            st.audio(audio)
